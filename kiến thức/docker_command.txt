@@ -1,0 +1,155 @@
+- systax: 
+	- docker <component> <command>
+		- component : 		
+			+ image
+			+ container
+			+ network
+			+ volume
+			command : 
+			+ ls -> liệt kê danh sách 
+			+ run 
+			+ exec -> thực thi câu lệnh bên trong 1 container
+			+ stop 
+			+ pull
+			+ prune - xóa các thành phần không còn được sử dụng 
+		
+		- image : 
+			+ docker build -t <image_name>:<tag> . : tạo ra 1 image
+				. build context: tham chiếu tới thư mục đang chứa Dockerfile
+			+ docker image pull <image>: tai ve 1 image
+			+ docker image pull <image>:<tag> : tag la  ten version cua image (neu khong co thi mac dinh la lastest)
+			+ docker image push <image>:<tag> : day 1 image len registry
+			+ docker image ls | docker images : liet ke tat ca cac image 
+			+ docker image prune : xoa cac image khong con duoc su dung 
+			+ docker rmi $(docker images -a -q) xoá all images
+			 viet tat cho image
+			+ docker pull 
+			+ docker push 
+		
+		- container : 
+			khi chạy 1 image thì ta có 1 container
+			khi sử dụng lệnh docker stop/kill thoát 1 container
+			khi sử dụng lệnh docker rm/docker container prune : xóa các container giải phóng bộ nhớ
+			chu trình sống của 1 container được quyết định bỏi tiến trình (main process) có PID = 1 
+			
+			+ docker-compose -f docker-compose-debezium-connector.yml up -d : run docker-compose by file name 
+			+ docker container ls | docker container ls -a 
+			+ docker container run <image> : run image và tạo ra 1 container 
+			+ docker rm -f $(docker ps -a -q) delete all container
+			
+			 viet tat cho docker container
+			+ docker run 
+			+ docker stop 
+			+ docker exec
+			+ docker ps | docker ps -a : hiển thị các container đang chạy hoặc đã dừng trước đó
+			+ docker stop <container_id> : 
+				khi chạy lệnh 1 Docker gửi 1 SIGTERM (terminating signal) để stop PID 1 EXITED(0) 
+				(TH có lỗi, trong vòng 10s mà container vẫn chưa kết thúc thì Docker sẽ gửi 1 SIGKILL và container sẽ stop kết thúc ngay lập tức EXITED(137)) 
+			
+			container alpine : là 1 container chủ đạo (chính) của container 
+			+ docker run alpine : khi chạy lệnh container sẽ start và kết thúc ngay lập tức
+			+ chạy 
+			+ docker run 
+			+ docker run -it --name <container_name> --volumes-from <other_container_id> chia sẻ volume giữa 2 container 
+			+ docker container prune
+			+ docker container exec <container_id> <command> : thuc thi cau lenh <command> trong 1 container
+		
+		- Execute commands insides container (Thực thi câu lệnh bên trong 1 container )
+			+ docker exec <container_id> <command>
+			+ docker exec <container_id> echo Hello word -> in ra Hello word
+			+ docker exec <container_id> -c "echo $PATH" -> in ra biến môi trường PATH của hệ thống
+			khi cần tương tác bên trong container ta cần thêm 2 tag -it
+			+ docker exec -it <container_id> sh -> mở một tiến trình phụ kết nối vào container (Attach)
+				-i | --interactive: keep STDIN open even if not attached
+				-t | --tty : allocate a pseudo - TTY
+			thoát khỏi chế độ Attach ấn: ctrl + D ( Detach )
+			tạm thoát Ctrl + p + q 
+			vào lại chế độ Attach (re-attch) sau khi Detach 
+			+ docker attch <container_id>
+
+			- mapping port container với port máy local: 
+			+ docker ps run -p <target_port | local port>:<container_port> image_name or .....
+			
+		- trace log: 
+			+ docker logs <container_id> | docker logs -f <container_id>
+				-f : tag giữ log màn hình 
+			
+		- volume (là nơi lưu trữ dữ liệu cho container ) - bind mount : mount volume mặc định của container tới local_dir
+			+ docker volume create <volume_name>
+				- có thể thêm các tham số ví dụ như:
+				--opt device=<path_storage_volume>
+				--opt type | o ......
+			+ docker volume inspect <volume_name> kiểm tra thông tin của 1 volume 
+			+ docker volume ls  danh sách volume 
+			+ docker run -v <local_dir | volume_name >:<container_dir>
+				- v: viết tắt của volume
+				<container_dir> : đường dẫn lưu dữ liệu mặc định của container
+			+ docker run -it --mount source=<volume_name>,target=<path_storage_container> <image_name | imageID> -> mount container với 1 volume
+			hoặc
+			+ docker run -it -v <volume_name>:<container_dir_storage> <image_name | imageID>
+			+ docker volume rm $(docker volume ls -q) : delete all volume 
+			
+	
+		- Dockerfile : tạo image
+			
+			FROM <image> : tạo 1 image từ 1 image mẫu
+			RUN <command> : chạy lệnh bên trong container
+				vd: RUN apt-get update \
+					&& apt-get install .... \
+					&& rm -rf /folder/*
+				dấu \ cho phép viết câu lệnh trên nhiều dòng
+					
+			WORKDIR <directory> : thư mục mặc định của container khi được khởi tạo
+			COPY <src> <dest> : coppy tất cả dữ liệu từ thư mục vào bên trong image
+			ADD <src/URL> <dest> : tương tự như COPY nhưng có thể tải file từ URL và giải nén (nếu là file nén)
+			EXPOSE <port> : tương tự như 1 comment thông báo là port mà ứng dụng đang chạy ( không có tác dụng thực thi hoặc cấu hình )
+			CMD command argument1 argument2....  | CMD ["command", "argument1", "argument2",....] thực thi những lệnh này khi khởi chạy container
+		
+		- Docker compose : cấu hình nhiều container
+			- cú pháp: 
+			+ docker-compose up | docker-compose up <service_name> | docker-compose up -d 
+				-d : hiểu là chạy ngầm
+			+ docker-compose logs <service_name> | docker-compose -f logs <service_name>
+			+ docker-compose stop <service_name>
+			+ docker-compose down -> shuttdown toàn bộ container
+			
+			- nội dung 1 file mẫu docker-compose.yaml
+			
+				version: '3'
+				services:
+					mysql: # service_name 
+					  image: mysql
+					  ports: 
+						- "3306:3306"
+					  volumes:
+						- mysqldata:/var/lib/mysql
+						- ./conf:/etc/mysql/mysql.conf.d
+					  environment: 
+						- MYSQL_ROOT_PASSWORD=admin_electronice123!@#
+						- MYSQL_DATABASE=electronice
+						- MYSQL_USER=xuan
+						- MYSQL_PASSWORD=Xu@n1997_2022_123!@#
+				volumes: 
+					mysqldata:
+					
+		- Network : giúp 2 container có thể giao tiếp được với nhau 
+			+ danh sách network: docker network ls
+			+ kiểm tra thông tin network: docker network inspect 
+			
+		
+Syntax to copy files/folders from docker container to local filesystem is
+
+docker cp [OPTIONS] CONTAINER:SRC_PATH DEST_PATH|-
+Ex : docker cp  b8ddea5d8fad:/mnt/mydir/ ./localDir
+
+Syntax to copy files/folders from local filesystem to docker container is
+
+docker cp [OPTIONS] SRC_PATH|- CONTAINER:DEST_PATH
+Ex : docker cp ./localDir/dirToCopy b8ddea5d8fad:/mnt/newDir/
+
+Use docker ps -a | grep <certain_container>
+Use locate docker-compose.yml and find the one that you want
+Use docker-compose restart (do docker-compose to see option)
+			
+		
+			
